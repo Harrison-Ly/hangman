@@ -1,3 +1,5 @@
+require "json"
+
 def get_secret_word
   dictionary = File.open("5desk.txt", "r")
   words = dictionary.readlines
@@ -10,17 +12,31 @@ def get_secret_word
 end
 
 class Game
-  attr_reader :guess_word, :misses
+  attr_accessor :save_game, :finished
 
-  def initialize
+  def initialize(misses = 0)
     @secret_word = get_secret_word #"TEST".split("")
     @guess_word = []
     (@secret_word.length).times { |i| @guess_word << "_" }
-    @misses = 0
+    @misses = misses
     @misses_limit = 10
     @missed_letters = []
     @finished = false
-    play
+    @save_game = false
+  end
+
+  def to_json
+    hash = {}
+    self.instance_variables.each do |v|
+      hash[v] = self.instance_variable_get(v)
+    end
+    hash.to_json
+  end
+
+  def from_json!(string)
+    JSON.load(string).each do |v, val|
+      self.instance_variable_set v, val
+    end
   end
 
   def play
@@ -53,7 +69,6 @@ class Game
     if @guess_letter == "GUESSWORD"
       get_full_guessword
     elsif @guess_letter == "SAVE"
-      puts "You have saved the game."
     elsif not /^[A-Z]$/.match(@guess_letter)
       puts "Invalid guess. Please try again."
     elsif @missed_letters.include?(@guess_letter)
@@ -88,6 +103,7 @@ class Game
 
   def is_finished?
     if @guess_letter == "SAVE"
+      @save_game = true
       true
     elsif @guess_word_full == @secret_word || @guess_word == @secret_word || @misses == @misses_limit
       win_or_lose
@@ -96,8 +112,6 @@ class Game
       false
     end
   end
-
-  #TODO method for save game. serialize to a file
 
   def win_or_lose
     if @guess_word_full == @secret_word || @guess_word == @secret_word
